@@ -1,8 +1,13 @@
 package se.deved;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 public class Main {
@@ -65,6 +70,12 @@ public class Main {
 
             Predicate<Integer> lam = (a) -> a == 5 || person == null;
             printAnyObject(lam);
+
+            File ironmanFile = new File("ironman.txt");
+            ironmanFile.createNewFile();
+            saveAnyObjectToFile(ironman, ironmanFile);
+
+            Person ironmanFromFile = readAnyObjectFromFile(Person.class, ironmanFile);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
@@ -84,7 +95,7 @@ public class Main {
     }
 
     public static <T> void printAnyObject(T value) throws Exception {
-        Class clazz =  value.getClass();
+        Class clazz = value.getClass();
         System.out.println(clazz.getSimpleName() + "{");
 
         for (Field field : clazz.getDeclaredFields()) {
@@ -100,5 +111,48 @@ public class Main {
         }
 
         System.out.println("}");
+    }
+
+    public static <T> void saveAnyObjectToFile(T object, File file) throws Exception {
+        FileWriter writer = new FileWriter(file);
+
+        Class clazz = object.getClass();
+        for (Field field : clazz.getDeclaredFields()) {
+            field.setAccessible(true);
+            Object value = field.get(object);
+            writer.append(value.toString()).append("\n");
+        }
+
+        writer.close();
+    }
+
+    public static <T> T readAnyObjectFromFile(Class<T> clazz, File file) throws Exception {
+        // Filen kanske inte finns
+        // Filen kan vara tom
+        // Filen innehåller ett objekt av fel typ
+
+        FileReader reader = new FileReader(file);
+        BufferedReader buffered = new BufferedReader(reader);
+
+        Object object = clazz.getConstructor().newInstance();
+
+        for (Field field : clazz.getDeclaredFields()) {
+            String fileValue = buffered.readLine();
+            field.setAccessible(true);
+
+            if (field.getType() == String.class) {
+                field.set(object, fileValue);
+            } else if (field.getType() == Integer.class) {
+                int num = Integer.parseInt(fileValue);
+                field.set(object, num);
+            } else if (field.getType() == Double.class) {
+                double num = Double.parseDouble(fileValue);
+                field.set(object, num);
+            } else if (field.getType() == Boolean.class) {
+                boolean bl = Objects.equals(fileValue, "true");
+                field.set(object, bl);
+            }
+        }
+
     }
 }
